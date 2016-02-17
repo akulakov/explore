@@ -3,11 +3,39 @@
 import os, sys
 from avkutil import Term
 
-player_char = '★'
 WIDTH, HEIGHT = 75, 20
 init_loc = int(WIDTH/2), int(HEIGHT/2)
-space = ' '
-rock = '▣'
+
+chars = dict(
+    player = '★',
+    space = ' ',
+    rock = '▣',
+)
+rock = chars["rock"]
+
+class BoardDef:
+    def __init__(self, rooms, corridors):
+        self.rooms, self.corridors = rooms, corridors
+
+level = [
+         ([0,1,2],
+         [3,4,5]
+          ),
+
+         {0: BoardDef([(Loc(30,7),10,5),
+                    ],
+                   [(Loc(40,40), None, 'r')
+                    ]
+          },
+
+         {1: BoardDef([(Loc(30,7),10,5),
+                    ],
+                   [(Loc(40,40), None, 'l')
+                    ]
+          },
+
+]
+
 
 def mkrow(size):
     return [[rock] for _ in range(size)]
@@ -70,7 +98,7 @@ class Player:
         loc = Loc(x,y)
         if not (0 <= x <= WIDTH-1) or not (0 <= y <= HEIGHT-1):
             return False
-        if self.board[loc] and rock in self.board[loc]:
+        if self.board[loc] and chars["rock"] in self.board[loc]:
             return False
         self.move(loc)
         self.loc = loc
@@ -110,7 +138,7 @@ class Board:
     def display(self):
         os.system("clear")
         def join_row(row):
-            return str.join('', [str(x[-1]) if x else space for x in row]) # + ['|'])
+            return str.join('', [str(x[-1]) if x else chars["space"] for x in row]) # + ['|'])
             
         print( str.join('\n', [join_row(r) for r in self.board] ))
     
@@ -131,7 +159,7 @@ class Explore:
             }
 
     def __init__(self):
-        self.player = Player(init_loc, board, player_char)
+        self.player = Player(init_loc, board, chars["player"])
         board[Loc(init_loc)] = self.player 
         make_room(Loc(30,7), 10, 5)
         make_line(Loc(40,10), dir='r')
