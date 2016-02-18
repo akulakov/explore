@@ -14,22 +14,10 @@ chars = dict(
 )
 rock = chars["rock"]
 
-class BoardDef:
-    def __init__(self, rooms, corridors):
-        self.rooms, self.corridors = rooms, corridors
+# class BoardDef:
+#     def __init__(self, rooms, corridors):
+#         self.rooms, self.corridors = rooms, corridors
 
-row1 = [
-     BoardDef(rooms = [(Loc(30,7),10,5),
-                        ],
-                  corridors = [(Loc(40,40), None, 'r'),
-                   ],
-
-     BoardDef([(Loc(30,7),10,5),
-                ],
-               [(Loc(40,40), None, 'l')
-                ]
-]
-level.append(row1)
 
 
 def mkrow(size):
@@ -89,20 +77,27 @@ class Loc:
         
 
 class Board:
-    def __init__(self, width, height):
-        self.board = [mkrow(width) for _ in range(height)]
+    # def __init__(self, width, height):
+    def __init__(self, rooms, corridors, width=WIDTH, height=HEIGHT):
+        self.width, self.height = width, height
+        self.rooms, self.corridors = rooms, corridors
 
-    def load(self, bdef):
-        for room in bdef.rooms:
-            make_room(*room)
-        for c in bdef.corridors:
-            make_line(*c)
+    def load(self):
+        self.board = [mkrow(self.width) for _ in range(self.height)]
+        for room in self.rooms:
+            self.make_room(*room)
+        for c in self.corridors:
+            self.make_line(*c)
 
     def __setitem__(self, k, val):
         self.board[k.y][k.x].append(val)
 
     def __getitem__(self, k):
-        return self.board[k.y][k.x]
+        try:
+            return self.board[k.y][k.x]
+        except:
+            print("k", k)
+            raise
 
     def display(self):
         os.system("clear")
@@ -144,7 +139,24 @@ class Board:
                 self[Loc(x,y)].remove(rock)
         
 
-board = Board(WIDTH, HEIGHT)
+row1 = [
+     Board(rooms = [(Loc(30,7),10,5),
+                    ],
+           corridors = [(Loc(40,10), None, 'r'),
+                       ],
+           ),
+
+     Board(rooms = [(Loc(30,7),10,5),
+                    ],
+           corridors = [(Loc(40,10), None, 'l')
+                        ]
+           ),
+]
+level = []
+level.append(row1)
+y, x = level_loc
+board = level[y][x]
+board.load()
 
 class Explore:
     cmds = {
@@ -163,9 +175,6 @@ class Explore:
         self.level_loc = ll = level_loc
         self.player = Player(init_loc, board, chars["player"])
         board[Loc(init_loc)] = self.player 
-        board_def = level[ll[0]][ll[1]]
-        make_room(Loc(30,7), 10, 5)
-        make_line(Loc(40,10), dir='r')
         board.display()
 
     def quit(self):
