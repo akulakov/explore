@@ -49,6 +49,19 @@ class Player:
         self.board[newloc].append(self)
         # print("moving from %s to %s" % (self.loc, newloc))
 
+    def level_move_dir(self, x_mod, y_mod):
+        x,y = explore.level_loc
+        x += x_mod
+        y += y_mod
+        loc = Loc(x,y)
+
+        if not (0 <= x <= len(level[0])-1) or not (0 <= y <= len(level)-1):
+            return False
+
+        explore.set_board(level[y][x])
+        self.board = explore.board
+        self.board.load()
+
     def move_dir(self, x_mod, y_mod):
         x,y = self.loc
         x += x_mod
@@ -59,10 +72,26 @@ class Player:
 
         if x < 0:
               if B.level_loc.x > 0:
+                  B.level_loc -= 1
+                  B.load()
 
+        wi = WIDTH-1
+        hi = HEIGHT-1
         if not (0 <= x <= WIDTH-1) or not (0 <= y <= HEIGHT-1):
-
-            return False
+            if x<0:
+                ok = self.level_left()
+                loc = Loc(wi, y)
+            elif x>WIDTH-1:
+                ok = self.level_right()
+                loc = Loc(0,y)
+            elif y<0:
+                ok = self.level_up()
+                loc = Loc(x, hi)
+            elif y>HEIGHT-1:
+                ok = self.level_down()
+                loc = Loc(x, 0)
+            if not ok:
+                return False
         if self.board[loc] and chars["rock"] in self.board[loc]:
             return False
         self.move(loc)
@@ -77,18 +106,28 @@ class Player:
     def down_left(self): self.move_dir(-1,1)
     def down_right(self): self.move_dir(1,1)
 
+    def level_up(self): self.level_move_dir(0,-1)
+    def level_down(self): self.level_move_dir(0,1)
+    def level_right(self): self.level_move_dir(1,0)
+    def level_left(self): self.level_move_dir(-1,0)
+
+
 class Board:
-    # def __init__(self, width, height):
+    loaded = False
+
     def __init__(self, rooms, corridors, width=WIDTH, height=HEIGHT):
         self.width, self.height = width, height
         self.rooms, self.corridors = rooms, corridors
+        self.load()
 
     def load(self):
+        if self.loaded: return
         self.board = [mkrow(self.width) for _ in range(self.height)]
         for room in self.rooms:
             self.make_room(*room)
         for c in self.corridors:
             self.make_line(*c)
+        self.loaded = True
 
     def __setitem__(self, k, val):
         self.board[k.y][k.x].append(val)
@@ -172,11 +211,15 @@ class Explore:
             'q': "self.quit",
             }
 
-    def __init__(self):
-        self.level_loc = ll = level_loc
-        self.player = Player(init_loc, board, chars["player"])
-        board[Loc(init_loc)] = self.player
-        board.display()
+    def __init__(self, level):
+        self.level_loc = loc = level_loc
+        B = self.board = level[loc.y][loc.x]
+        self.player = Player(init_loc, B, chars["player"])
+        B[Loc(init_loc)] = self.player
+        B.display()
+
+    def set_board(self, b):
+        self.board = b
 
     def quit(self):
         sys.exit()
@@ -185,7 +228,7 @@ class Explore:
         t = Term()
         player = self.player
         while True:
-            board.display()
+            self.board.display()
             c = t.getch().decode("utf-8")
             print("c", c)
             if c not in self.cmds:
