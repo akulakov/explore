@@ -5,7 +5,7 @@ from avkutil import Term
 
 WIDTH, HEIGHT = 75, 20
 init_loc = int(WIDTH/2), int(HEIGHT/2)
-level_loc = 0,0     # row, col
+level_loc = (0,0)     # row, col
 
 chars = dict(
     player = '★',
@@ -18,10 +18,21 @@ rock = chars["rock"]
 #     def __init__(self, rooms, corridors):
 #         self.rooms, self.corridors = rooms, corridors
 
-
-
 def mkrow(size):
     return [[rock] for _ in range(size)]
+
+class Loc:
+    def __init__(self, x, y=None):
+        if y is None:
+            x, y = x
+        self.x, self.y = x, y
+
+    def __iter__(self):
+        yield self.x; yield self.y
+
+    def __repr__(self):
+        return "<Loc: %d,%d>" % tuple(self)
+level_loc = Loc(*level_loc)
 
 
 class Player:
@@ -35,19 +46,22 @@ class Player:
 
     def move(self, newloc):
         self.board[self.loc].remove(self)
-        try: self.board[self.loc].remove(self)
-        except:pass
         self.board[newloc].append(self)
-        # print("self.board", self.board.board)
-        print("moving from %s to %s" % (self.loc, newloc))
-        # input()
+        # print("moving from %s to %s" % (self.loc, newloc))
 
     def move_dir(self, x_mod, y_mod):
         x,y = self.loc
         x += x_mod
         y += y_mod
+
         loc = Loc(x,y)
+        B = self.board
+
+        if x < 0:
+              if B.level_loc.x > 0:
+
         if not (0 <= x <= WIDTH-1) or not (0 <= y <= HEIGHT-1):
+
             return False
         if self.board[loc] and chars["rock"] in self.board[loc]:
             return False
@@ -62,19 +76,6 @@ class Player:
     def up_left(self): self.move_dir(-1,-1)
     def down_left(self): self.move_dir(-1,1)
     def down_right(self): self.move_dir(1,1)
-        
-class Loc:
-    def __init__(self, x, y=None):
-        if y is None:
-            x, y = x
-        self.x, self.y = x, y
-
-    def __iter__(self):
-        yield self.x; yield self.y
-
-    def __repr__(self):
-        return "<Loc: %d,%d>" % tuple(self)
-        
 
 class Board:
     # def __init__(self, width, height):
@@ -103,9 +104,9 @@ class Board:
         os.system("clear")
         def join_row(row):
             return str.join('', [str(x[-1]) if x else chars["space"] for x in row]) # + ['|'])
-            
+
         print( str.join('\n', [join_row(r) for r in self.board] ))
-    
+
     def make_room(self, loc, width=None, height=None, loc2=None):
         x, y = loc
         if not width:
@@ -137,7 +138,7 @@ class Board:
             x, x2 = min(x,x2), max(x,x2)
             for x in range(x,x2+1):
                 self[Loc(x,y)].remove(rock)
-        
+
 
 row1 = [
      Board(rooms = [(Loc(30,7),10,5),
@@ -174,12 +175,12 @@ class Explore:
     def __init__(self):
         self.level_loc = ll = level_loc
         self.player = Player(init_loc, board, chars["player"])
-        board[Loc(init_loc)] = self.player 
+        board[Loc(init_loc)] = self.player
         board.display()
 
     def quit(self):
         sys.exit()
-        
+
     def main_loop(self):
         t = Term()
         player = self.player
@@ -193,6 +194,6 @@ class Explore:
             obj, cmd = self.cmds[c].split('.')
             m = getattr(locals()[obj], cmd)
             m()
-        
-    
+
+
 Explore().main_loop()
