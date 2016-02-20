@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 
+"""
+Explore
+
+One global var is used by Board and Player: `explore`
+"""
+
 import os, sys
 from avkutil import Term
 
+debug=1
 WIDTH, HEIGHT = 75, 20
 init_loc = int(WIDTH/2), int(HEIGHT/2)
 level_loc = (0,0)     # row, col
@@ -47,7 +54,8 @@ class Player:
     def move(self, newloc):
         self.board[self.loc].remove(self)
         self.board[newloc].append(self)
-        # print("moving from %s to %s" % (self.loc, newloc))
+        print("moving from %s to %s" % (self.loc, newloc))
+        print("self.board[newloc]", self.board[newloc])
 
     def level_move_dir(self, x_mod, y_mod):
         x,y = explore.level_loc
@@ -61,6 +69,7 @@ class Player:
         explore.set_board(level[y][x])
         self.board = explore.board
         self.board.load()
+        return True
 
     def move_dir(self, x_mod, y_mod):
         x,y = self.loc
@@ -68,12 +77,11 @@ class Player:
         y += y_mod
 
         loc = Loc(x,y)
-        B = self.board
 
         if x < 0:
-              if B.level_loc.x > 0:
-                  B.level_loc -= 1
-                  B.load()
+              if self.board.level_loc.x > 0:
+                  self.board.level_loc -= 1
+                  self.board.load()
 
         wi = WIDTH-1
         hi = HEIGHT-1
@@ -91,25 +99,31 @@ class Player:
                 ok = self.level_down()
                 loc = Loc(x, 0)
             if not ok:
+                print(1)
                 return False
-        if self.board[loc] and chars["rock"] in self.board[loc]:
+        B = self.board
+        # if loc not in B:
+            # return False
+        if B[loc] and chars["rock"] in B[loc]:
+            print(3)
             return False
         self.move(loc)
         self.loc = loc
+        return True
 
-    def up(self): self.move_dir(0,-1)
-    def down(self): self.move_dir(0,1)
-    def right(self): self.move_dir(1,0)
-    def left(self): self.move_dir(-1,0)
-    def up_right(self): self.move_dir(1,-1)
-    def up_left(self): self.move_dir(-1,-1)
-    def down_left(self): self.move_dir(-1,1)
-    def down_right(self): self.move_dir(1,1)
+    def up(self): return self.move_dir(0,-1)
+    def down(self): return self.move_dir(0,1)
+    def right(self): return self.move_dir(1,0)
+    def left(self): return self.move_dir(-1,0)
+    def up_right(self): return self.move_dir(1,-1)
+    def up_left(self): return self.move_dir(-1,-1)
+    def down_left(self): return self.move_dir(-1,1)
+    def down_right(self): return self.move_dir(1,1)
 
-    def level_up(self): self.level_move_dir(0,-1)
-    def level_down(self): self.level_move_dir(0,1)
-    def level_right(self): self.level_move_dir(1,0)
-    def level_left(self): self.level_move_dir(-1,0)
+    def level_up(self): return self.level_move_dir(0,-1)
+    def level_down(self): return self.level_move_dir(0,1)
+    def level_right(self): return self.level_move_dir(1,0)
+    def level_left(self): return self.level_move_dir(-1,0)
 
 
 class Board:
@@ -140,7 +154,8 @@ class Board:
             raise
 
     def display(self):
-        os.system("clear")
+        if not debug:
+            os.system("clear")
         def join_row(row):
             return str.join('', [str(x[-1]) if x else chars["space"] for x in row]) # + ['|'])
 
@@ -176,7 +191,11 @@ class Board:
         if y==y2:
             x, x2 = min(x,x2), max(x,x2)
             for x in range(x,x2+1):
-                self[Loc(x,y)].remove(rock)
+                try: self[Loc(x,y)].remove(rock)
+                except:
+                    pass
+                    # print(x,y,self[Loc(x,y)])
+                    # raise
 
 
 row1 = [
@@ -188,15 +207,15 @@ row1 = [
 
      Board(rooms = [(Loc(30,7),10,5),
                     ],
-           corridors = [(Loc(40,10), None, 'l')
+           corridors = [(Loc(35,10), None, 'l')
                         ]
            ),
 ]
 level = []
 level.append(row1)
-y, x = level_loc
-board = level[y][x]
-board.load()
+# y, x = level_loc
+# board = level[y][x]
+# board.load()
 
 class Explore:
     cmds = {
@@ -213,7 +232,9 @@ class Explore:
 
     def __init__(self, level):
         self.level_loc = loc = level_loc
+        self.level = level
         B = self.board = level[loc.y][loc.x]
+        B.load()
         self.player = Player(init_loc, B, chars["player"])
         B[Loc(init_loc)] = self.player
         B.display()
@@ -238,5 +259,5 @@ class Explore:
             m = getattr(locals()[obj], cmd)
             m()
 
-
-Explore().main_loop()
+explore = Explore(level)
+explore.main_loop()
