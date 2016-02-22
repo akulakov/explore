@@ -8,6 +8,7 @@ One global var is used by Board and Player: `explore`
 
 import os, sys
 import random
+
 from avkutil import Term
 import npcs
 import items
@@ -27,6 +28,9 @@ rock = chars["rock"]
 
 def mkrow(size):
     return [[rock] for _ in range(size)]
+
+class StopMove(Exception):
+    pass
 
 class Loc:
     def __init__(self, x, y=None):
@@ -48,16 +52,18 @@ class Player:
         self.board = board
         self.char = char
         self.message = False
+        self.go_mode = None
 
     def __str__(self):
         return self.char
 
     def move(self, newloc, old_board=None, oldloc=None):
         B = old_board or self.board
-        try:
-            B[oldloc or self.loc].remove(self)
-        except ValueError as e:
-            print(e)
+        B[oldloc or self.loc].remove(self)
+        # try:
+            # B[oldloc or self.loc].remove(self)
+        # except ValueError as e:
+            # print(e)
         tile = self.board[newloc]
         # print("tile", tile)
         msg = []
@@ -66,8 +72,13 @@ class Player:
             for item in tile:
                 msg.append(item.description)
             msg.append("\nContinue..")
-        self.message = msg
+            self.message = msg
+            tile.append(self)
+            self.loc = newloc
+            if self.go_mode:
+                raise StopMove
         tile.append(self)
+        # return True
         # print("moving from %s to %s" % (self.loc, newloc))
         # print("self.board[newloc]", self.board[newloc])
 
@@ -88,17 +99,19 @@ class Player:
         self.board.load()
         return True
 
-    def move_dir(self, x_mod, y_mod):
+    def move_dir(self, x_mod, y_mod, go=False):
         x,y = self.loc
         x += x_mod
         y += y_mod
-
         loc = Loc(x,y)
 
         wi = WIDTH-1
         hi = HEIGHT-1
         old_board = explore.board
         if not (0 <= x <= WIDTH-1) or not (0 <= y <= HEIGHT-1):
+            if self.go_mode:
+                # return False    # stop `go` command
+                raise StopMove
             if x<0:
                 ok = self.level_left()
                 loc = Loc(wi, y)
@@ -124,6 +137,16 @@ class Player:
         self.move(loc, old_board, old)
         self.loc = loc
         return True
+
+    def go(self, m=None):
+        if m:
+            self.go_mode = m
+        try:
+            ok = getattr(self, self.go_mode)()
+            if not ok:
+                self.go_mode = None
+        except StopMove:
+            self.go_mode = None
 
     def up(self): return self.move_dir(0,-1)
     def down(self): return self.move_dir(0,1)
@@ -175,7 +198,8 @@ class Board:
             self.make_line(*c)
         for item in self.items:
             self.random_place(item)
-        for _ in range(random.randint(0,6)):
+
+        for _ in range(random.randint(0,3)):
             self.random_place(random.choice(items.items))
         self.loaded = True
 
@@ -227,33 +251,30 @@ class Board:
                     self[Loc(x,y)].remove(rock)
                     # vertical corridor should be wider to look better when displayed
                     self[Loc(x+1,y)].remove(rock)
+                    self[Loc(x+2,y)].remove(rock)
                 except: pass
         if y==y2:
             x, x2 = min(x,x2), max(x,x2)
             for x in range(x,x2+1):
-                try: self[Loc(x,y)].remove(rock)
+                try:
+                    self[Loc(x,y)].remove(rock)
+                    self[Loc(x,y+1)].remove(rock)
                 except:
                     pass
                     # print(x,y,self[Loc(x,y)])
                     # raise
 
 
-
-# level.append(row1)
-# y, x = level_loc
-# board = level[y][x]
-# board.load()
-
 class Explore:
     cmds = {
-            'l': "player.right",
-            'h': "player.left",
-            'k': "player.up",
-            'j': "player.down",
-            'u': "player.up_right",
-            'y': "player.up_left",
-            'b': "player.down_left",
-            'n': "player.down_right",
+            'l': "right",
+            'h': "left",
+            'k': "up",
+            'j': "down",
+            'u': "up_right",
+            'y': "up_left",
+            'b': "down_left",
+            'n': "down_right",
             'q': "self.quit",
             }
 
@@ -275,15 +296,24 @@ class Explore:
 
     def run_cmd(self, cmd):
         player = self.player
+        if cmd[0]=='g' and cmd[1] in "hjklyubn":
+            player.go(self.cmds[cmd[1]])
+            return
+
         num, cmd = int(cmd[:-1] or 1), cmd[-1]
         if cmd not in self.cmds:
             print("command not found")
             return False
-        obj, cmd = self.cmds[cmd].split('.')
+        # q
+        cmd = self.cmds[cmd]
+        # self.quit
+        if '.' in cmd:
+            obj, cmd = cmd.split('.')
+        else:
+            obj = "player"
         for n in range(num):
             m = getattr(locals()[obj], cmd)
             m()
-        return True
 
     def main_loop(self):
         t = Term()
@@ -296,11 +326,13 @@ class Explore:
                 t.getch()
                 self.player.message = False
                 self.board.display()
-            c = ''
-            while not c or c[-1].isdigit():
-                c += t.getch().decode("utf-8")
-            if not self.run_cmd(c):
+            if self.player.go_mode:
+                self.player.go()    # continue with go mode..
                 continue
+            c = ''
+            while not c or c[-1].isdigit() or c[-1]=='g':
+                c += t.getch().decode("utf-8")
+            self.run_cmd(c)
 
 
 explore = Explore(level.level(Board, Loc))
